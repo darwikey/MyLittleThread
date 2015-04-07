@@ -24,13 +24,6 @@ thread_t _impl_thread_create(){
 
 
 thread_t thread_self(){
-  /*if (linkedlist__get_size(&thread_list) < 1){
-    return NULL;
-  }
-
-  // recupère le thread courrant, celui qui est en haut de la liste
-  return linkedlist__back(&thread_list);*/
-
   return current_thread;
 }
 
@@ -59,7 +52,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   (*new_thread)->context.uc_stack.ss_size = stack_size;
   (*new_thread)->context.uc_stack.ss_sp = malloc(stack_size);
   (*new_thread)->context.uc_link = &main_thread->context;
-  makecontext(&(*new_thread)->context, (void (*)(void)) func, 0);
+  makecontext(&(*new_thread)->context, (void (*)(void)) func, 1, funcarg);
 
   // sauvegarde le context du main thread et passe dans le context du nouveau thread
   swapcontext(&main_thread->context, &(*new_thread)->context);
@@ -84,20 +77,22 @@ int thread_yield(void){
     return -1;
   }
 
+  thread_t previous_thread = current_thread;
+  current_thread = next_thread;
+
   // sauvegarde le contexte du thread et revient dans le main thread
-  swapcontext(&current_thread->context, &next_thread->context);
+  swapcontext(&previous_thread->context, &next_thread->context);
   
   return 0;
 }
 
 
 int thread_join(thread_t thread, void **retval){
-   // recupère le thread courrant
-  /*  thread_t current_thread = thread_self();
-
-  if (current_thread == NULL){
+ 
+  // si le thread que l'on attend est notre propre thread
+  if (current_thread == thread){
     return -1;
-    }*/
+  }
 
   current_thread = thread;
 
