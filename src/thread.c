@@ -4,6 +4,8 @@
 #include <ucontext.h> 
 #include "link.h"
 
+static pthread_t FATHER_THREAD = 0;
+
 
 struct thread_struct{
   ucontext_t context;
@@ -51,6 +53,9 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
     main_thread = _impl_thread_create();
     linkedlist__push_front(&thread_list, main_thread);
   }
+
+	//enregistrement du thread pere
+	FATHER_THREAD = thread_self();
 
   // alloue le thread
   *new_thread = _impl_thread_create();
@@ -123,3 +128,44 @@ int thread_join(thread_t thread, void **retval){
   
   return 0;
 }
+
+
+/* terminer le thread courant en renvoyant la valeur de retour retval.
+ * cette fonction ne retourne jamais.
+ *
+ * L'attribut noreturn aide le compilateur à optimiser le code de
+ * l'application (élimination de code mort). Attention à ne pas mettre
+ * cet attribut dans votre interface tant que votre thread_exit()
+ * n'est pas correctement implémenté (il ne doit jamais retourner).
+ */
+extern void thread_exit(void *retval){
+	signal_off();
+	thread_t current_thread = thread_self();
+	current_thread-> retval = retval;
+	//current_thread->  = 1;
+	
+	//passer au thread suivant
+	if(current_thread -> next != NULL){
+	thread_t temp = current_thread ; 
+	current_thread = current_thread->next ;
+	
+	
+	}
+
+	//on enleve le dernier thread
+	linkedlist__pop_back(current_thread);
+	
+	
+
+}
+
+
+
+
+
+
+
+
+
+
+
