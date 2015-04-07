@@ -1,88 +1,83 @@
 #include "mutex.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <ucontext.h>
 
-
-struct mutex_struct mutex_struct;
-
-
-ucontext_t main_context;
-ucontext_t mutex_context;
+// pour opérations atomiques (nécessaire si on gère plusieurs coeurs) -> C11 (prof) ou openPA (perso).
 
 
-mutex_unitialized(mutex_struct * mutex_struct){
-  mutex_struct.mutex = NULL; // pas forcément nécessaire
-  mutex_struct.state = 0; // unitialized
-  mutex_struct.attr = NULL; // pas forcément nécessaire
-}
+static struct mutex_struct mutex_struct = {.mutex=NULL, .state=0, .attr=MUTEX_NORMAL};
 
 
-int mutex_init(mutex_t * mutex, const mutex_attr_t attr){
+int mutex_init(mutex_t * mutex, const enum attr * attr){
   
   if (attr != NULL){
-    if (strcmp(attr, "MUTEX_NORMAL") != 0 && strcmp(attr, "MUTEX_RECURSIVE") != 0 && strcmp(attr, "MUTEX_ERRORCHECK") != 0) // attr n'est pas l'une des 3 valeurs supportées, ni NULL
+    if (*attr !=  MUTEX_NORMAL && *attr != MUTEX_RECURSIVE && *attr != MUTEX_ERRORCHECK) // attr n'est pas l'une des 3 valeurs supportées, ni NULL
       return -1;
     
     else // attr != NULL et est l'une des 3 valeurs supportées
-      mutex_struct.attr = attr;
+      mutex_struct.attr = *attr;
   }    
 
   else  // attr == NULL    
-    mutex_struct.attr = "MUTEX_NORMAL";
+    mutex_struct.attr = MUTEX_NORMAL;
 
   mutex_struct.mutex = mutex; 
-  mutex_struct.state = 2; // unlocked
+  mutex_struct.state = 2; // déverrouillé
   return 0;
 }
 
 int mutex_destroy(mutex_t * mutex){
-  // && mutex_struct.attr == "MUTEX_ERRORCHECK" à laisser ? ou tout le tps check ?
-  if(mutex_struct.state == 1 && mutex_struct.attr == "MUTEX_ERRORCHECK"){ // essai de détruire un mutex verrouillé, comportement indéfini
+  // && mutex_struct.attr == MUTEX_ERRORCHECK à laisser ? ou tout le tps check ?
+  if(mutex_struct.state == 1 && mutex_struct.attr == MUTEX_ERRORCHECK){ // essai de détruire un mutex verrouillé, comportement indéfini
     printf("Attention, vous avez essayé de détruire un mutex verrouillé\n");
     return -1;
   }
  
-  mutex_struct.state = 0; // unitialized
+  mutex_struct.state = 0; // détruire = désinitialiser
   return 0;
 }
 
 int mutex_lock(mutex_t * mutex){
-  if(strcmp(mutex_struct.attr, "MUTEX_ERRORCHECK") == 0){
 
-    if(mutex_struct.state == 1) // already locked
-      return -2;
+  if(mutex_struct.attr ==  MUTEX_ERRORCHECK && mutex_struct.state == 1){ // déjà verrouillé
+    printf("Tentative de verrouillage de mutex déjà verrouillé.\n");
+    return -2;
+  }
 
-    else if(mutex_struct.state == 0) // unitialized
-      return -1;
+  else if(mutex_struct.attr ==  MUTEX_ERRORCHECK && mutex_struct.state == 0){ // non initialisé
+    printf("Tentative de verrouillage de mutex non initialisé.\n");
+    return -1;
   }
   
-  mutex_struct.state = 1; // locked
+  mutex_struct.state = 1; // on verrouille
+  while(mutex_struct.state == 1); // on bloque la ressource (pb : attente active -> 100% de proc)
+
   return 0;
 }
 
 int mutex_trylock(mutex_t * mutex){
-  if(mutex_struct.state == 1) // if locked
+  if(mutex_struct.state == 1) // si verrouillé
     return 0;
 
-  else mutex_lock(mutex);   
+  else return mutex_lock(mutex);   
 
 }
 
 int mutex_unlock(mutex_t * mutex){
-
-  if(strcmp(mutex_struct.attr, "MUTEX_ERRORCHECK") == 0){
-
-    if(mutex_struct.state == 2) // already unlocked
-      return -2;
-
-    else if(mutex_struct.state == 0) // unitialized
-      return -1;
+  
+  if(mutex_struct.attr == MUTEX_ERRORCHECK && mutex_struct.state == 2){ // déjà déverrouillé
+    printf("Tentative de déverrouillage de mutex déjà déverrouillé.\n");
+    return -2;
   }
 
-  
+  else if(mutex_struct.attr == MUTEX_ERRORCHECK && mutex_struct.state == 0){ // non initialisé
+    printf("Tentative de déverouillage de mutex non initialisé.\n");
+    return -1;
+  }
 
-
-
+  else{
+    mutex_struct.state = 2;
+    return 0;
+  }
 }
