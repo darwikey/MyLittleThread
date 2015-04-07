@@ -7,41 +7,48 @@
  */
 typedef void * mutex_t;
 
-typedef void * mutex_attr_t;
+enum attr {MUTEX_NORMAL, MUTEX_RECURSIVE, MUTEX_ERRORCHECK};
 
 /* structure de mutex
  */
 struct mutex_struct{
   mutex_t mutex;
-  int state; // 0 = unitilized, 1 = locked, 2 = unlocked
-  mutex_attr_t attr; // MUTEX_NORMAL, MUTEX_RECURSIVE or MUTEX_ERRORCHECK
+  int state; // 0 = non initialisé, 1 = verrouillé, 2 = déverrouillé
+  enum attr attr;
 };
 
 
-/* créer un nouveau mutex
-   renvoie 0 en cas de succès, -1 en cas d'erreur
+/* Créer un nouveau mutex
+   Renvoie 0 en cas de succès, -1 en cas d'erreur
 */
-int mutex_init(mutex_t * mutex, const mutex_attr_t attr);
+int mutex_init(mutex_t * mutex, const enum attr * attr);
+
 
 /* Détruit le mutex référencé par mutex
    Retourne 0 si tout s'est bien passé, -1 en cas d'erreur
- */
+*/
 int mutex_destroy(mutex_t * mutex);
 
-/* verrouille le mutex
+
+/* Verrouille le mutex
    Retourne 0 si tout se passe bien
    -1 si le mutex n'était pas initialisé
    -2 si le mutex était déjà verrouillé
 */
 int mutex_lock(mutex_t * mutex);
 
-/* verrouille le mutex.
+
+/* Verrouille le mutex.
    Retourne immédiatement si le mutex est déjà verrouillé
 */
 int mutex_trylock(mutex_t * mutex);
 
-/* déverrouille le mutex  
- */
+
+/* Déverrouille le mutex  
+   Retourne 0 si tout se passe bien
+   -1 si le mutex n'était pas initialisé
+   -2 si le mutex était déjà déverrouillé
+*/
 int mutex_unlock(mutex_t * mutex);
 
 #else /* USE_PTHREAD */
