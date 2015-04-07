@@ -7,6 +7,7 @@
 
 struct thread_struct{
   ucontext_t context;
+  void* returned_value;
 };
 
 static thread_t main_thread = NULL;
@@ -18,8 +19,23 @@ static thread_t current_thread = NULL;
 
 thread_t _impl_thread_create(){
   thread_t t = malloc(sizeof(struct thread_struct));
+  returned_value = NULL;
 
   return t;
+}
+
+
+// retourne si le thread est présent dans la liste de thread
+int _impl_thread_is_valid(thread_t thread){
+  struct listiterator it = listiterator__init_iterator(&thread_list);
+  
+  for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
+    if (listiterator__get_data(it) == thread){
+      return 1;
+    }
+  }
+
+  return 0; // non valide
 }
 
 
@@ -94,10 +110,16 @@ int thread_join(thread_t thread, void **retval){
     return -1;
   }
 
+  // si le thread n'existe plus on retourne une erreur
+  if (!_impl_thread_is_valid(thread)){
+    return -1;
+  }
+
+  thread_t previous_thread = current_thread;
   current_thread = thread;
 
   // passe au thread
-  swapcontext(&main_thread->context, &current_thread->context);
+  swapcontext(&previous_thread->context, &current_thread->context);
   
   return 0;
 }
