@@ -8,7 +8,7 @@
  *     mais attention aux inconvénient des tableaux de threads
  *     (consommation mémoire, cout d'allocation, ...).
  */
-typedef void * thread_t;
+typedef struct thread_struct* thread_t;
 
 /* recuperer l'identifiant du thread courant.
  */
