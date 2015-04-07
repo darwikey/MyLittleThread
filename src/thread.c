@@ -40,6 +40,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   // si le thread du main n'existe pas, on le crée 
   if (main_thread == NULL){
     main_thread = _impl_thread_create();
+    linkedlist__push_front(&thread_list, main_thread);
   }
 
   // alloue le thread
@@ -73,8 +74,18 @@ int thread_yield(void){
     return -1;
   }
 
+  // recupère le thread en queue de file
+  thread_t next_thread = NULL;
+  if (linkedlist__get_size(&thread_list) > 0){
+    next_thread = linkedlist__back(&thread_list);
+  }
+
+  if (next_thread == NULL){
+    return -1;
+  }
+
   // sauvegarde le contexte du thread et revient dans le main thread
-  swapcontext(&current_thread->context, &main_thread->context);
+  swapcontext(&current_thread->context, &next_thread->context);
   
   return 0;
 }
