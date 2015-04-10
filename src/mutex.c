@@ -24,6 +24,7 @@ int mutex_init(mutex_t * mutex, const enum attr * attr){
 
   mutex_struct.mutex = mutex; 
   mutex_struct.state = 2; // déverrouillé
+  //printf("mutex_init\n");
   return 0;
 }
 
@@ -39,9 +40,9 @@ int mutex_destroy(mutex_t * mutex){
 }
 
 int mutex_lock(mutex_t * mutex){
-
   if(mutex_struct.attr ==  MUTEX_ERRORCHECK && mutex_struct.state == 1){ // déjà verrouillé
     printf("Tentative de verrouillage de mutex déjà verrouillé.\n");
+    while(mutex_struct.state == 1);
     return -2;
   }
 
@@ -49,10 +50,10 @@ int mutex_lock(mutex_t * mutex){
     printf("Tentative de verrouillage de mutex non initialisé.\n");
     return -1;
   }
+  //printf("mutex_lock\n");
   
-  mutex_struct.state = 1; // on verrouille
   while(mutex_struct.state == 1); // on bloque la ressource (pb : attente active -> 100% de proc)
-
+  mutex_struct.state = 1; // on verrouille
   return 0;
 }
 
