@@ -2,7 +2,7 @@ ROOT=../
 
 CC= gcc
 CFLAGS= -g -Wall -std=c99 -I$(ROOT)/src -I.
-LDFLAGS= -L$(ROOT)/lib 
+LDFLAGS= -L$(ROOT)/lib
 MAKE= /usr/bin/make
 
 BIN=	01-main \
