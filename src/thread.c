@@ -32,6 +32,10 @@ thread_t _impl_thread_create(){
 int _impl_thread_is_valid(thread_t thread){
   struct listiterator it = listiterator__init_iterator(&thread_list);
   
+  if (linkedlist__get_size(&thread_list) <= 1){
+    return 0;
+  }
+
   for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
     if (listiterator__get_data(it) == thread){
       return 1;
@@ -42,9 +46,24 @@ int _impl_thread_is_valid(thread_t thread){
 }
 
 
+// supprime un thread de la liste de thread
+void _impl_thread_delete(thread_t thread){
+  struct listiterator it = listiterator__init_iterator(&thread_list);
+
+  for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
+    if (listiterator__get_data(it) == thread){
+      listiterator__remove_node(it);
+      return;
+    }
+  }
+}
+
+
 // lance la fonction et stocke sa valeur retournée
 void _impl_thread_launch_function(thread_t thread, void* (*function)(void*), void* parameter){
-  thread->returned_value = function(parameter);  
+  thread->returned_value = function(parameter);
+
+  _impl_thread_delete(thread);
 }
 
 
