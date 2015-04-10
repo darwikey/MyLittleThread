@@ -48,7 +48,19 @@ void _impl_thread_launch_function(thread_t thread, void* (*function)(void*), voi
 }
 
 
-thread_t thread_self(){
+void _impl_thread_init_main(void){
+  if (main_thread == NULL){
+    main_thread = _impl_thread_create();
+    linkedlist__push_front(&thread_list, main_thread);
+    current_thread = main_thread;
+  }
+}
+
+
+thread_t thread_self(void){
+  if (current_thread == NULL){
+    _impl_thread_init_main();
+  }
   return current_thread;
 }
 
@@ -93,7 +105,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
 int thread_yield(void){
 
   if (current_thread == NULL){
-    return -1;
+    _impl_thread_init_main();
   }
 
   // recupère le thread en queue de file
@@ -105,6 +117,10 @@ int thread_yield(void){
   if (next_thread == NULL){
     return -1;
   }
+
+  // on passe le thread de la queue à la tete de la liste
+  linkedlist__pop_back(&thread_list);
+  linkedlist__push_front(&thread_list, next_thread);
 
   thread_t previous_thread = current_thread;
   current_thread = next_thread;
@@ -165,7 +181,7 @@ void thread_exit(void *retval){
     }*/
   
   //on enleve le dernier thread
-  linkedlist__pop_back(current_thread);
+  //linkedlist__pop_back(current_thread);
   
   
   
