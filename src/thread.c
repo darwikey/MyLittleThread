@@ -4,6 +4,8 @@
 #include <ucontext.h> 
 #include "link.h"
 
+void thread_stack_overflow();
+void thread_stack_overflow_detected(int);
 
 struct thread_struct{
   ucontext_t context;
@@ -202,17 +204,36 @@ void thread_exit(void *retval){
   //on enleve le dernier thread
   //linkedlist__pop_back(current_thread);
   
-  
-  
+    
 }
 
 
+void thread_stack_overflow() {
+  
+  // Pile pour gérér les signaux si la pile du thread est pleine
+  stack_t ss;
+  ss.ss_sp = malloc(SIGSTKSZ);
+  ss.ss_size = SIGSTKSZ;
+  ss.ss_flags = 0;
+  ss.ss_size=SIGSTKSZ;
+  sigaltstack(&ss, NULL);
+  
+  // Déroutement
+  struct sigaction sa;
+  sa.sa_handler = thread_stack_overflow_detected; // gestionnaire de signal 
+  sa.sa_flags = SA_ONSTACK;
+  sigaction(SIGSEGV, &sa, NULL);
 
+}
 
+void thread_stack_overflow_detected(int sig) {
+  
+  thread_t current_thread = thread_self();
 
+  //On s'assure de ne pas tuer le thread courant
+  thread_t ancient_thread = current_thread;
+  current_thread = current_thread->father_thread;
+  swapcontext(&ancient_thread->context, &current_thread->context);
+  _impl_thread_delete(ancient_thread);
 
-
-
-
-
-
+}
