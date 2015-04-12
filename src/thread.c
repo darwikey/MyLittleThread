@@ -5,7 +5,7 @@
 #include "link.h"
 
 void thread_stack_overflow();
-void thread_stack_overflow_detected(int);
+void thread_stack_overflow_detected();
 
 struct thread_struct{
   ucontext_t context;
@@ -226,7 +226,7 @@ void thread_stack_overflow() {
 
 }
 
-void thread_stack_overflow_detected(int sig) {
+void thread_stack_overflow_detected() {
   
   thread_t current_thread = thread_self();
 
