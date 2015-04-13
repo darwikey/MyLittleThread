@@ -32,32 +32,34 @@ thread_t _impl_thread_create(){
 
 // retourne si le thread est présent dans la liste de thread
 int _impl_thread_is_valid(thread_t thread){
-  struct listiterator it = listiterator__init_iterator(&thread_list);
+  /*struct listiterator it = listiterator__init_iterator(&thread_list);
   
   if (linkedlist__get_size(&thread_list) <= 1){
     return 0;
   }
 
-  for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
+  for (; listiterator__is_valide(it); it = listiterator__goto_next(it)){
     if (listiterator__get_data(it) == thread){
       return 1;
     }
-  }
+    }*/
+  struct listiterator it = listiterator__find_data(&thread_list, thread);
 
-  return 0; // non valide
+  return listiterator__is_valide(it); // non valide
 }
 
 
 // supprime un thread de la liste de thread
 void _impl_thread_delete(thread_t thread){
-  struct listiterator it = listiterator__init_iterator(&thread_list);
 
-  for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
-    if (listiterator__get_data(it) == thread){
-      listiterator__remove_node(it);
-      return;
-    }
+  struct listiterator it = listiterator__find_data(&thread_list, thread);
+
+  if (listiterator__is_valide(it)){
+    listiterator__remove_node(it);
   }
+
+
+  //TODO delete stack
 }
 
 
@@ -91,6 +93,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   // si le thread du main n'existe pas, on le crée 
   if (main_thread == NULL){
     main_thread = _impl_thread_create();
+    current_thread = main_thread;
     linkedlist__push_front(&thread_list, main_thread);
   }  
 
@@ -161,50 +164,39 @@ int thread_join(thread_t thread, void **retval){
   }
 
   // si le thread n'existe plus on retourne une erreur
-  if (!_impl_thread_is_valid(thread)){
-    return -1;
+  while (_impl_thread_is_valid(thread)){
+    printf("yield");
+    thread_yield();
   }
 
-  thread_t previous_thread = current_thread;
-  current_thread = thread;
+
+
+  //thread_t previous_thread = current_thread;
+  //current_thread = thread;
 
   // passe au thread
-  swapcontext(&previous_thread->context, &current_thread->context);
+  //swapcontext(&previous_thread->context, &current_thread->context);
 
   if (retval != NULL){
-    *retval = current_thread->returned_value;
+    *retval = thread->returned_value;
   }
   
   return 0;
 }
 
 
-/* terminer le thread courant en renvoyant la valeur de retour retval.
- * cette fonction ne retourne jamais.
- *
- * L'attribut noreturn aide le compilateur à optimiser le code de
- * l'application (élimination de code mort). Attention à ne pas mettre
- * cet attribut dans votre interface tant que votre thread_exit()
- * n'est pas correctement implémenté (il ne doit jamais retourner).
- */
 void thread_exit(void *retval){
-  //signal_off();
   
   current_thread->returned_value = retval;
-  //current_thread->  = 1;
   
-  //passer au thread suivant
-  /*if(current_thread -> next != NULL){
-    thread_t temp = current_thread ; 
-    current_thread = current_thread->next ;
-    
-    
-    }*/
-  
-  //on enleve le dernier thread
-  //linkedlist__pop_back(current_thread);
-  
-    
+  _impl_thread_delete(current_thread);
+
+  assert(current_thread->father_thread);
+
+  // passe au thread du pere
+  swapcontext(&current_thread->context, &current_thread->father_thread->context);
+ 
+  assert(0);
 }
 
 
