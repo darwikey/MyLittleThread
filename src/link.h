@@ -267,6 +267,7 @@ inline void linkedlist__pop_front(struct linkedlist* list){
     else{
         struct listnode* head = list->headNode;
         list->headNode = listnode__get_next(head);
+        listnode__set_previous(list->headNode, NULL);
         free(head);
     }
     list->nbElementsInList -= 1;
@@ -284,6 +285,7 @@ inline void linkedlist__pop_back(struct linkedlist* list){
     else{
         struct listnode* back = list->backNode;
         list->backNode = listnode__get_previous(back);
+        listnode__set_next(list->backNode, NULL);
         free(back);
     }
     list->nbElementsInList -= 1;

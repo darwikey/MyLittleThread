@@ -4,6 +4,8 @@
 #include <ucontext.h> 
 #include "link.h"
 
+void thread_stack_overflow();
+void thread_stack_overflow_detected();
 
 struct thread_struct{
   ucontext_t context;
@@ -21,6 +23,11 @@ static thread_t current_thread = NULL;
 // crée un thread
 thread_t _impl_thread_create(){
   thread_t t = malloc(sizeof(struct thread_struct));
+
+  if (t == NULL){
+    perror("malloc");
+  }
+
   t->returned_value = NULL;
   t->father_thread = NULL;
 
@@ -30,21 +37,32 @@ thread_t _impl_thread_create(){
 
 // retourne si le thread est présent dans la liste de thread
 int _impl_thread_is_valid(thread_t thread){
-  struct listiterator it = listiterator__init_iterator(&thread_list);
-  
-  for (; listiterator__has_next(it); it = listiterator__goto_next(it)){
-    if (listiterator__get_data(it) == thread){
-      return 1;
-    }
+
+  struct listiterator it = listiterator__find_data(&thread_list, thread);
+
+  return listiterator__is_valide(it); // non valide
+}
+
+
+// supprime un thread de la liste de thread
+void _impl_thread_delete(thread_t thread){
+
+  struct listiterator it = listiterator__find_data(&thread_list, thread);
+
+  if (listiterator__is_valide(it)){
+    listiterator__remove_node(it);
   }
 
-  return 0; // non valide
+
+  //TODO delete stack
 }
 
 
 // lance la fonction et stocke sa valeur retournée
 void _impl_thread_launch_function(thread_t thread, void* (*function)(void*), void* parameter){
-  thread->returned_value = function(parameter);  
+  thread->returned_value = function(parameter);
+
+  thread_exit(thread->returned_value);
 }
 
 
@@ -66,10 +84,14 @@ thread_t thread_self(void){
 
 
 int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
+  
+  thread_t previous_thread = current_thread;
 
   // si le thread du main n'existe pas, on le crée 
   if (main_thread == NULL){
     main_thread = _impl_thread_create();
+    current_thread = main_thread;
+    previous_thread = main_thread;
     linkedlist__push_front(&thread_list, main_thread);
   }  
 
@@ -90,13 +112,17 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   const size_t stack_size = 64*1024;
   (*new_thread)->context.uc_stack.ss_size = stack_size;
   (*new_thread)->context.uc_stack.ss_sp = malloc(stack_size);
-  (*new_thread)->context.uc_link = &main_thread->context;
+  if ((*new_thread)->context.uc_stack.ss_sp == NULL){
+    perror("malloc");
+  }
+  
+  //(*new_thread)->context.uc_link = &previous_thread->context;
 
   // lance la fonction
   makecontext(&(*new_thread)->context, (void (*)(void)) _impl_thread_launch_function, 3, (*new_thread), func, funcarg);
 
   // sauvegarde le context du main thread et passe dans le context du nouveau thread
-  swapcontext(&main_thread->context, &(*new_thread)->context);
+  swapcontext(&previous_thread->context, &(*new_thread)->context);
   
   return 0;
 }
@@ -135,65 +161,86 @@ int thread_yield(void){
 int thread_join(thread_t thread, void **retval){
  
   // si le thread que l'on attend est notre propre thread
-  if (current_thread == thread){
+  /*if (current_thread == thread){
     return -1;
-  }
+    }*/
 
   // si le thread n'existe plus on retourne une erreur
-  if (!_impl_thread_is_valid(thread)){
-    return -1;
+  while (_impl_thread_is_valid(thread)){
+    thread_yield();
   }
 
-  thread_t previous_thread = current_thread;
-  current_thread = thread;
+
+
+  //thread_t previous_thread = current_thread;
+  //current_thread = thread;
 
   // passe au thread
-  swapcontext(&previous_thread->context, &current_thread->context);
+  //swapcontext(&previous_thread->context, &current_thread->context);
 
   if (retval != NULL){
-    *retval = current_thread->returned_value;
+    *retval = thread->returned_value;
   }
   
   return 0;
 }
 
 
-/* terminer le thread courant en renvoyant la valeur de retour retval.
- * cette fonction ne retourne jamais.
- *
- * L'attribut noreturn aide le compilateur à optimiser le code de
- * l'application (élimination de code mort). Attention à ne pas mettre
- * cet attribut dans votre interface tant que votre thread_exit()
- * n'est pas correctement implémenté (il ne doit jamais retourner).
- */
 void thread_exit(void *retval){
-  //signal_off();
   
   current_thread->returned_value = retval;
-  //current_thread->  = 1;
   
-  //passer au thread suivant
-  /*if(current_thread -> next != NULL){
-    thread_t temp = current_thread ; 
-    current_thread = current_thread->next ;
+  _impl_thread_delete(current_thread);
+
+  // s'il n'y a plus de thread disponible
+  if (linkedlist__get_size(&thread_list) < 1){
+    exit(EXIT_SUCCESS);
+  }
+
+  /*// si pas de thread père
+  if (current_thread->father_thread == NULL){
+    // S'il y a encore des threads a executer
+    if (linkedlist__get_size(&thread_list) >= 1){
+      thread_yield();
+    }
     
-    
+    exit(EXIT_SUCCESS);
     }*/
-  
-  //on enleve le dernier thread
-  //linkedlist__pop_back(current_thread);
-  
-  
-  
+
+  // passe au thread du pere
+  thread_yield();
+  //  swapcontext(&current_thread->context, &current_thread->father_thread->context);
+ 
+  assert(0);
 }
 
 
+void thread_stack_overflow() {
+  
+  // Pile pour gérér les signaux si la pile du thread est pleine
+  stack_t ss;
+  ss.ss_sp = malloc(SIGSTKSZ);
+  ss.ss_size = SIGSTKSZ;
+  ss.ss_flags = 0;
+  ss.ss_size=SIGSTKSZ;
+  sigaltstack(&ss, NULL);
+  
+  // Déroutement
+  struct sigaction sa;
+  sa.sa_handler = thread_stack_overflow_detected; // gestionnaire de signal 
+  sa.sa_flags = SA_ONSTACK;
+  sigaction(SIGSEGV, &sa, NULL);
 
+}
 
+void thread_stack_overflow_detected() {
+  
+  thread_t current_thread = thread_self();
 
+  //On s'assure de ne pas tuer le thread courant
+  thread_t ancient_thread = current_thread;
+  current_thread = current_thread->father_thread;
+  swapcontext(&ancient_thread->context, &current_thread->context);
+  _impl_thread_delete(ancient_thread);
 
-
-
-
-
-
+}
