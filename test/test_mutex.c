@@ -7,14 +7,14 @@
 
 pthread_t tid[2];
 int counter;
-struct mutex_struct lock;
+struct mutex_t lock;
 int choix;
 
 void* doSomeThing(void *arg)
 {
   int i;
   if(choix == 1)
-    mutex_lock(&lock.mutex);
+    mutex_lock(&lock);
 
   counter += 1;
   printf("\n Job %d started\n", counter);
@@ -24,7 +24,7 @@ void* doSomeThing(void *arg)
   printf("\n Job %d finished\n", counter);
 
   if(choix == 1)
-    mutex_unlock(&lock.mutex);
+    mutex_unlock(&lock);
 
   return NULL;
 }
@@ -43,7 +43,7 @@ int main(void)
   }
 
     if(choix == 1){
-      if (mutex_init(&lock.mutex, &my_attr) != 0){
+      if (mutex_init(&lock, &my_attr) != 0){
 	  printf("\n mutex init failed\n");
 	  return 1;
 	}
@@ -60,7 +60,7 @@ int main(void)
     pthread_join(tid[0], NULL);
     pthread_join(tid[1], NULL);
     if(choix == 1)
-      mutex_destroy(&lock.mutex);
+      mutex_destroy(&lock);
 
     return 0;
   }
