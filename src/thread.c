@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h> 
+#include <valgrind/valgrind.h>
 #include "link.h"
 
 void thread_stack_overflow();
@@ -11,6 +12,7 @@ struct thread_struct{
   ucontext_t context;
   void* returned_value;
   struct thread_struct* father_thread;
+  int valgrind_stackid;
 };
 
 static thread_t main_thread = NULL;
@@ -30,8 +32,21 @@ thread_t _impl_thread_create(){
 
   t->returned_value = NULL;
   t->father_thread = NULL;
+  t->valgrind_stackid = 0;
 
   return t;
+}
+
+
+void _impl_thread_delete(thread_t thread){
+  if (thread->context.uc_stack.ss_sp != NULL){
+
+    VALGRIND_STACK_DEREGISTER(thread->valgrind_stackid);
+
+    free(thread->context.uc_stack.ss_sp);
+  }
+
+  free(thread);
 }
 
 
@@ -45,16 +60,13 @@ int _impl_thread_is_valid(thread_t thread){
 
 
 // supprime un thread de la liste de thread
-void _impl_thread_delete(thread_t thread){
+void _impl_thread_remove_from_list(thread_t thread){
 
   struct listiterator it = listiterator__find_data(&thread_list, thread);
 
   if (listiterator__is_valide(it)){
     listiterator__remove_node(it);
   }
-
-
-  //TODO delete stack
 }
 
 
@@ -115,8 +127,9 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   if ((*new_thread)->context.uc_stack.ss_sp == NULL){
     perror("malloc");
   }
-  
-  //(*new_thread)->context.uc_link = &previous_thread->context;
+  (*new_thread)->valgrind_stackid = VALGRIND_STACK_REGISTER((*new_thread)->context.uc_stack.ss_sp,
+			  (*new_thread)->context.uc_stack.ss_sp + stack_size);
+ 
 
   // lance la fonction
   makecontext(&(*new_thread)->context, (void (*)(void)) _impl_thread_launch_function, 3, (*new_thread), func, funcarg);
@@ -182,6 +195,8 @@ int thread_join(thread_t thread, void **retval){
     *retval = thread->returned_value;
   }
   
+  _impl_thread_delete(thread);
+
   return 0;
 }
 
@@ -190,7 +205,7 @@ void thread_exit(void *retval){
   
   current_thread->returned_value = retval;
   
-  _impl_thread_delete(current_thread);
+  _impl_thread_remove_from_list(current_thread);
 
   // s'il n'y a plus de thread disponible
   if (linkedlist__get_size(&thread_list) < 1){
@@ -241,6 +256,6 @@ void thread_stack_overflow_detected() {
   thread_t ancient_thread = current_thread;
   current_thread = current_thread->father_thread;
   swapcontext(&ancient_thread->context, &current_thread->context);
-  _impl_thread_delete(ancient_thread);
+  _impl_thread_remove_from_list(ancient_thread);
 
 }
