@@ -1,9 +1,15 @@
 #include "thread.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <ucontext.h> 
 #include <valgrind/valgrind.h>
+#include <time.h>
+#include <signal.h>
 #include "link.h"
+
+#define THREAD_PREEMPT
+#define THREAD_PREEMPT_INTERVAL 10000
 
 void thread_stack_overflow();
 void thread_stack_overflow_detected();
@@ -20,6 +26,18 @@ static thread_t main_thread = NULL;
 static struct linkedlist thread_list = EmptyList;
 //thread courrant
 static thread_t current_thread = NULL;
+// verrou pour la préemption
+static int lock_preempt = 0;
+
+
+void _impl_thread_lock(){
+  lock_preempt = 1;
+}
+
+
+void _impl_thread_unlock(){
+  lock_preempt = 0;
+} 
 
 
 // crée un thread
@@ -72,9 +90,19 @@ void _impl_thread_remove_from_list(thread_t thread){
 
 // lance la fonction et stocke sa valeur retournée
 void _impl_thread_launch_function(thread_t thread, void* (*function)(void*), void* parameter){
+  _impl_thread_unlock();
+
   thread->returned_value = function(parameter);
 
   thread_exit(thread->returned_value);
+}
+
+
+// fonction appelée à intervalle régulier
+void _impl_thread_preempt_handler(int signal){
+  if (signal == SIGALRM && !lock_preempt){
+    thread_yield();
+  }
 }
 
 
@@ -84,27 +112,44 @@ void _impl_thread_init_main(void){
     linkedlist__push_front(&thread_list, main_thread);
     current_thread = main_thread;
   }
+
+#ifdef THREAD_PREEMPT
+  // enregistre la fonction de préemption
+  struct sigaction act;
+  act.sa_handler = _impl_thread_preempt_handler;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
+
+  if(sigaction(SIGALRM, &act, 0) == -1){
+    perror("sigaction");
+  }
+
+  ualarm(THREAD_PREEMPT_INTERVAL, THREAD_PREEMPT_INTERVAL);
+#endif
 }
 
 
 thread_t thread_self(void){
+  _impl_thread_lock();
+
   if (current_thread == NULL){
     _impl_thread_init_main();
   }
+
+  _impl_thread_unlock();
   return current_thread;
 }
 
 
 int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
-  
+  _impl_thread_lock();
   thread_t previous_thread = current_thread;
 
   // si le thread du main n'existe pas, on le crée 
   if (main_thread == NULL){
-    main_thread = _impl_thread_create();
-    current_thread = main_thread;
+    _impl_thread_init_main();
+    
     previous_thread = main_thread;
-    linkedlist__push_front(&thread_list, main_thread);
   }  
 
   // alloue le thread
@@ -136,12 +181,17 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
 
   // sauvegarde le context du main thread et passe dans le context du nouveau thread
   swapcontext(&previous_thread->context, &(*new_thread)->context);
+
+  _impl_thread_unlock();
+
   
   return 0;
 }
 
 
 int thread_yield(void){
+
+  _impl_thread_lock();
 
   if (current_thread == NULL){
     _impl_thread_init_main();
@@ -154,6 +204,7 @@ int thread_yield(void){
   }
 
   if (next_thread == NULL){
+    _impl_thread_unlock();
     return -1;
   }
 
@@ -165,25 +216,31 @@ int thread_yield(void){
   current_thread = next_thread;
 
   // sauvegarde le contexte du thread et revient dans le main thread
+  
   swapcontext(&previous_thread->context, &next_thread->context);
   
+  _impl_thread_unlock();
+
   return 0;
 }
 
 
 int thread_join(thread_t thread, void **retval){
  
+  _impl_thread_lock();
+
   // si le thread que l'on attend est notre propre thread
   /*if (current_thread == thread){
     return -1;
     }*/
 
   // si le thread n'existe plus on retourne une erreur
-  while (_impl_thread_is_valid(thread)){
+  while (_impl_thread_is_valid(thread)){    
     thread_yield();
+    _impl_thread_lock();
   }
 
-
+  
 
   //thread_t previous_thread = current_thread;
   //current_thread = thread;
@@ -196,13 +253,15 @@ int thread_join(thread_t thread, void **retval){
   }
   
   _impl_thread_delete(thread);
-
+  _impl_thread_unlock();
   return 0;
 }
 
 
 void thread_exit(void *retval){
   
+  _impl_thread_lock();
+
   current_thread->returned_value = retval;
   
   _impl_thread_remove_from_list(current_thread);
