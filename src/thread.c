@@ -175,6 +175,9 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   (*new_thread)->valgrind_stackid = VALGRIND_STACK_REGISTER((*new_thread)->context.uc_stack.ss_sp,
 			  (*new_thread)->context.uc_stack.ss_sp + stack_size);
  
+  //Cas débordement de pile
+  thread_stack_overflow();
+
 
   // lance la fonction
   makecontext(&(*new_thread)->context, (void (*)(void)) _impl_thread_launch_function, 3, (*new_thread), func, funcarg);
@@ -288,33 +291,42 @@ void thread_exit(void *retval){
   assert(0);
 }
 
+stack_t ss;
+struct sigaction sa;
 
 void thread_stack_overflow() {
   
   // Pile pour gérér les signaux si la pile du thread est pleine
-  stack_t ss;
   ss.ss_sp = malloc(SIGSTKSZ);
   ss.ss_size = SIGSTKSZ;
   ss.ss_flags = 0;
-  ss.ss_size=SIGSTKSZ;
+  //ss.ss_size=SIGSTKSZ;
   sigaltstack(&ss, NULL);
   
   // Déroutement
-  struct sigaction sa;
   sa.sa_handler = thread_stack_overflow_detected; // gestionnaire de signal 
   sa.sa_flags = SA_ONSTACK;
   sigaction(SIGSEGV, &sa, NULL);
-
 }
 
 void thread_stack_overflow_detected() {
-  
-  thread_t current_thread = thread_self();
+
+  //Note: l'attribut father_thread n'est pas initialisé
 
   //On s'assure de ne pas tuer le thread courant
   thread_t ancient_thread = current_thread;
-  current_thread = current_thread->father_thread;
-  swapcontext(&ancient_thread->context, &current_thread->context);
+  current_thread = (thread_t) thread_list.headNode->next->data;
+  printf("detected\n");
+  printf("current_thread: %p\n", current_thread);
+  printf("ancient_thread: %p\n", ancient_thread);
+  int i;
+  struct listnode * thread=thread_list.headNode;
+  for(i=0; i<thread_list.nbElementsInList; i++) {
+    printf("%p \n", thread->data);
+    thread = listnode__get_next(thread);
+  }
   _impl_thread_remove_from_list(ancient_thread);
+  swapcontext(&ancient_thread->context, &current_thread->context);
+  _impl_thread_delete(ancient_thread);
 
 }
