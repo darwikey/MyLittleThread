@@ -19,6 +19,7 @@ struct thread_struct{
   void* returned_value;
   struct thread_struct* father_thread;
   int valgrind_stackid;
+  int is_valid;
 };
 
 static thread_t main_thread = NULL;
@@ -51,6 +52,7 @@ thread_t _impl_thread_create(){
   t->returned_value = NULL;
   t->father_thread = NULL;
   t->valgrind_stackid = 0;
+  t->is_valid = 1;
 
   return t;
 }
@@ -70,10 +72,9 @@ void _impl_thread_delete(thread_t thread){
 
 // retourne si le thread est présent dans la liste de thread
 int _impl_thread_is_valid(thread_t thread){
+  //struct listiterator it = listiterator__find_data(&thread_list, thread);
 
-  struct listiterator it = listiterator__find_data(&thread_list, thread);
-
-  return listiterator__is_valide(it); // non valide
+  return thread->is_valid;//listiterator__is_valide(it); // non valide
 }
 
 
@@ -265,6 +266,9 @@ void thread_exit(void *retval){
   
   _impl_thread_lock();
 
+  current_thread->is_valid = 0;
+
+  // stocke la valeur retournée
   current_thread->returned_value = retval;
   
   _impl_thread_remove_from_list(current_thread);
