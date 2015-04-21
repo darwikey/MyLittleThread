@@ -39,40 +39,49 @@ int mutex_destroy(struct mutex_t * mutex){
 }
 
 int mutex_lock(struct mutex_t * mutex){
-  if(mutex->attr ==  MUTEX_ERRORCHECK && mutex->state == 1){ // déjà verrouillé
-    printf("Tentative de verrouillage de mutex déjà verrouillé.\n");
-    while(mutex->state == 1);
-    return -2;
+  if(mutex->attr ==  MUTEX_ERRORCHECK){
+
+    if (mutex->state == 1){ // déjà verrouillé
+      fprintf(stderr, "Tentative de verrouillage de mutex déjà verrouillé.\n");
+      return -2;
+    }
+
+    if(mutex->state == 0){ // non initialisé
+      fprintf(stderr, "Tentative de verrouillage de mutex non initialisé.\n");
+      return -1;
+    }
+  }
+  
+  // on attend la ressource 
+  while(mutex->state == 1){
+    thread_yield();
   }
 
-  else if(mutex->attr ==  MUTEX_ERRORCHECK && mutex->state == 0){ // non initialisé
-    printf("Tentative de verrouillage de mutex non initialisé.\n");
-    return -1;
-  }
-  //printf("mutex_lock\n");
-  
-  while(mutex->state == 1); // on bloque la ressource (pb : attente active -> 100% de proc)
-  mutex->state = 1; // on verrouille
+  // on verrouille
+  mutex->state = 1; 
+
   return 0;
 }
+
 
 int mutex_trylock(struct mutex_t * mutex){
   if(mutex->state == 1) // si verrouillé
     return 0;
 
-  else return mutex_lock(mutex);   
+  else 
+    return mutex_lock(mutex);   
 
 }
 
 int mutex_unlock(struct mutex_t * mutex){
   
   if(mutex->attr == MUTEX_ERRORCHECK && mutex->state == 2){ // déjà déverrouillé
-    printf("Tentative de déverrouillage de mutex déjà déverrouillé.\n");
+    fprintf(stderr, "Tentative de déverrouillage de mutex déjà déverrouillé.\n");
     return -2;
   }
 
   else if(mutex->attr == MUTEX_ERRORCHECK && mutex->state == 0){ // non initialisé
-    printf("Tentative de déverouillage de mutex non initialisé.\n");
+    fprintf(stderr, "Tentative de déverouillage de mutex non initialisé.\n");
     return -1;
   }
 
