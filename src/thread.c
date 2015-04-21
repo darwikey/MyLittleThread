@@ -273,12 +273,19 @@ void thread_exit(void *retval){
   
   _impl_thread_remove_from_list(current_thread);
 
+	//Ajout du pere en fin de queue
+	if (current_thread->father_thread != NULL){
+		_impl_thread_remove_from_list(current_thread->father_thread );
+		linkedlist__push_back(&thread_list, current_thread->father_thread);
+
+	}
+	
   // s'il n'y a plus de thread disponible
   if (linkedlist__get_size(&thread_list) < 1){
     exit(EXIT_SUCCESS);
   }
-
-  /*// si pas de thread père
+	
+  // si pas de thread père
   if (current_thread->father_thread == NULL){
     // S'il y a encore des threads a executer
     if (linkedlist__get_size(&thread_list) >= 1){
@@ -286,7 +293,7 @@ void thread_exit(void *retval){
     }
     
     exit(EXIT_SUCCESS);
-    }*/
+    }
 
   // passe au thread du pere
   thread_yield();
