@@ -1,9 +1,8 @@
-ROOT=../
+ROOT=..
 
 CC= gcc
 CFLAGS= -g -Wall -std=c99 -I$(ROOT)/src -I.
-LDFLAGS= -L$(ROOT)/lib
-MAKE= /usr/bin/make
+LDFLAGS= -L$(ROOT)/lib  
 
 BIN=	01-main \
 	02-switch \
@@ -16,8 +15,6 @@ BIN=	01-main \
 	32-switch-many-join \
 	51-fibonacci
 
-SUBDIR= test
-
 all: $(BIN)
 	@echo "Binaries created !"
 
@@ -26,6 +23,16 @@ all: $(BIN)
 
 %.o: %.c
 
+01-main: ../src/thread.o
+02-switch: ../src/thread.o
+11-join: ../src/thread.o
+12-join-main: ../src/thread.o
+21-create-many: ../src/thread.o
+22-create-many-recursive: ../src/thread.o
+23-create-many-once: ../src/thread.o
+31-switch-many: ../src/thread.o
+32-switch-many-join: ../src/thread.o
+51-fibonacci: ../src/thread.o
 
 clean:
 	@rm -f $(BIN) *~ *.o
