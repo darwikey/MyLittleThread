@@ -13,7 +13,8 @@ BIN=	01-main \
 	23-create-many-once \
 	31-switch-many \
 	32-switch-many-join \
-	51-fibonacci
+	51-fibonacci \
+	61-stack-overflow
 
 all: $(BIN)
 	@echo "Binaries created !"
@@ -33,6 +34,7 @@ all: $(BIN)
 31-switch-many: ../src/thread.o
 32-switch-many-join: ../src/thread.o
 51-fibonacci: ../src/thread.o
+61-stack-overflow: ../src/thread.o
 
 clean:
 	@rm -f $(BIN) *~ *.o

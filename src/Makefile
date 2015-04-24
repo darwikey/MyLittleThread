@@ -11,13 +11,12 @@ HEADERS=thread.h
 OBJECTS=$(SOURCES:.c=.o)
 
 LIBDIR=../lib
-TARGET=$(LIBDIR)/thread.so
+TARGET=$(LIBDIR)/thread.a
 
 all: $(TARGET)
 
 clean:
 	rm -rf $(OBJECTS) $(TARGET)
-	touch $(ROOT)/lib/thread.so 
 
 
 $(TARGET): $(OBJECTS)
