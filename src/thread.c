@@ -8,7 +8,7 @@
 #include <signal.h>
 #include "link.h"
 
-#define THREAD_PREEMPT
+//#define THREAD_PREEMPT
 #define THREAD_PREEMPT_INTERVAL 10000
 
 void thread_stack_overflow();
@@ -20,6 +20,7 @@ struct thread_struct{
   struct thread_struct* father_thread;
   int valgrind_stackid;
   int is_valid;
+  int is_waiting;
 };
 
 static thread_t main_thread = NULL;
@@ -53,6 +54,7 @@ thread_t _impl_thread_create(){
   t->father_thread = NULL;
   t->valgrind_stackid = 0;
   t->is_valid = 1;
+  t->is_waiting = 0;
 
   return t;
 }
@@ -157,7 +159,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   *new_thread = _impl_thread_create();
   
   // ajoute à la liste (au debut)
-  linkedlist__push_front(&thread_list, *new_thread);
+  linkedlist__push_back(&thread_list, *new_thread);
 
   // enregistrement des threads
   (*new_thread)->father_thread = current_thread;
@@ -201,20 +203,17 @@ int thread_yield(void){
     _impl_thread_init_main();
   }
 
-  // recupère le thread en queue de file
-  thread_t next_thread = NULL;
-  if (linkedlist__get_size(&thread_list) > 0){
-    next_thread = linkedlist__back(&thread_list);
-  }
-
-  if (next_thread == NULL){
-    _impl_thread_unlock();
-    return -1;
-  }
 
   // on passe le thread de la queue à la tete de la liste
-  linkedlist__pop_back(&thread_list);
-  linkedlist__push_front(&thread_list, next_thread);
+  if (linkedlist__get_size(&thread_list) > 1){  
+    if (current_thread == linkedlist__back(&thread_list)){
+      linkedlist__pop_back(&thread_list);
+      linkedlist__push_front(&thread_list, current_thread);
+    }
+  }
+
+  // recupère le thread en queue de file
+  thread_t next_thread = linkedlist__back(&thread_list);
 
   thread_t previous_thread = current_thread;
   current_thread = next_thread;
@@ -238,24 +237,28 @@ int thread_join(thread_t thread, void **retval){
     return -1;
     }*/
 
-  // si le thread n'existe plus on retourne une erreur
-  while (_impl_thread_is_valid(thread)){    
+  
+ 
+  while(_impl_thread_is_valid(thread)){
+    thread->father_thread = current_thread;
+    current_thread->is_waiting = 1;
+
+    // on le retire de la liste de threads actifs  
+    assert(linkedlist__back(&thread_list) == current_thread);
+    linkedlist__pop_back(&thread_list);
+
     thread_yield();
     _impl_thread_lock();
+
+    current_thread->is_waiting = 0;
   }
 
   
-
-  //thread_t previous_thread = current_thread;
-  //current_thread = thread;
-
-  // passe au thread
-  //swapcontext(&previous_thread->context, &current_thread->context);
-
   if (retval != NULL){
     *retval = thread->returned_value;
   }
-  
+
+  //libère memoire  
   _impl_thread_delete(thread);
   _impl_thread_unlock();
   return 0;
@@ -267,37 +270,34 @@ void thread_exit(void *retval){
   _impl_thread_lock();
 
   current_thread->is_valid = 0;
-
+  
   // stocke la valeur retournée
   current_thread->returned_value = retval;
   
-  _impl_thread_remove_from_list(current_thread);
 
-	//Ajout du pere en fin de queue
-	if (current_thread->father_thread != NULL){
-		_impl_thread_remove_from_list(current_thread->father_thread );
-		linkedlist__push_back(&thread_list, current_thread->father_thread);
+  assert(linkedlist__back(&thread_list) == current_thread);
+  linkedlist__pop_back(&thread_list);
 
-	}
-	
+
+  //Ajout du pere en fin de queue
+  if (current_thread->father_thread != NULL){
+    // si le pere attend, on doit le rajouter dans la liste de threads
+    if (current_thread->father_thread->is_waiting){
+      assert(!listiterator__is_valide(listiterator__find_data(&thread_list, current_thread->father_thread)));
+      linkedlist__push_back(&thread_list, current_thread->father_thread);
+      //current_thread = current_thread->father_thread;
+    }
+  }		
+
+
   // s'il n'y a plus de thread disponible
   if (linkedlist__get_size(&thread_list) < 1){
     exit(EXIT_SUCCESS);
   }
-	
-  // si pas de thread père
-  if (current_thread->father_thread == NULL){
-    // S'il y a encore des threads a executer
-    if (linkedlist__get_size(&thread_list) >= 1){
-      thread_yield();
-    }
-    
-    exit(EXIT_SUCCESS);
-    }
 
   // passe au thread du pere
   thread_yield();
-  //  swapcontext(&current_thread->context, &current_thread->father_thread->context);
+
  
   assert(0);
 }
