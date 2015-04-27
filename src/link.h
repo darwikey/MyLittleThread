@@ -213,6 +213,7 @@ inline void linkedlist__free_nodes(struct linkedlist * list){
     struct listnode* node = list->headNode;
     while(node != NULL){
         struct listnode* nextNode = listnode__get_next(node);
+	printf("free: %p\n", node);
         free(node);
         node = nextNode;
     }
@@ -222,6 +223,7 @@ inline void linkedlist__free_nodes(struct linkedlist * list){
 inline void linkedlist__free_list_and_nodes(struct linkedlist * list){
     assert(list != NULL);
     linkedlist__free_nodes(list);
+    printf("free: %p\n", list);
     free(list);
 }
 
@@ -260,6 +262,7 @@ inline void linkedlist__pop_front(struct linkedlist* list){
     assert(list->headNode != NULL);
     assert(list->nbElementsInList != 0);
     if(list->nbElementsInList == 1){
+      printf("free: %p\n", list->headNode);
         free(list->headNode);
         list->headNode = NULL;
         list->backNode = NULL;
@@ -268,6 +271,7 @@ inline void linkedlist__pop_front(struct linkedlist* list){
         struct listnode* head = list->headNode;
         list->headNode = listnode__get_next(head);
         listnode__set_previous(list->headNode, NULL);
+	printf("free: %p\n", head);
         free(head);
     }
     list->nbElementsInList -= 1;
@@ -278,6 +282,7 @@ inline void linkedlist__pop_back(struct linkedlist* list){
     assert(list->backNode != NULL);
     assert(list->nbElementsInList != 0);
     if(list->nbElementsInList == 1){
+      printf("free: %p\n", list->backNode);
         free(list->backNode);
         list->headNode = NULL;
         list->backNode = NULL;
@@ -286,6 +291,7 @@ inline void linkedlist__pop_back(struct linkedlist* list){
         struct listnode* back = list->backNode;
         list->backNode = listnode__get_previous(back);
         listnode__set_next(list->backNode, NULL);
+	printf("free: %p\n", back);
         free(back);
     }
     list->nbElementsInList -= 1;
@@ -368,6 +374,7 @@ inline struct listiterator listiterator__remove_node(struct listiterator iterato
     struct listiterator previousIterator = listiterator__goto_previous(iterator);
     struct listiterator nextIterator = listiterator__goto_next(iterator);
 
+    printf("free: %p\n", iterator.workingNode);
     free(iterator.workingNode);
     iterator.workingList->nbElementsInList -= 1;
 
@@ -414,7 +421,8 @@ inline struct listiterator listiterator__insert_after(struct listiterator iterat
         listnode__set_next(iterator.workingNode, newNode);
     }
     iterator.workingList->nbElementsInList += 1;
-    return listiterator__goto_next(iterator);
+    iterator.workingNode = newNode;
+    return iterator;
 }
 
 inline struct listiterator listiterator__insert_before(struct listiterator iterator, void* data){
@@ -438,7 +446,8 @@ inline struct listiterator listiterator__insert_before(struct listiterator itera
         listnode__set_previous(iterator.workingNode, newNode);
     }
     iterator.workingList->nbElementsInList += 1;
-    return listiterator__goto_previous(iterator);
+    iterator.workingNode = newNode;
+    return iterator;
 }
 
 //////////////////////////////////////////////////////////////////////////////

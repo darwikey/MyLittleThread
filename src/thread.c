@@ -325,19 +325,44 @@ void thread_stack_overflow_detected() {
   //Note: l'attribut father_thread n'est pas initialisé
 
   //On s'assure de ne pas tuer le thread courant
-  thread_t ancient_thread = current_thread;
-  current_thread = (thread_t) thread_list.headNode->next->data;
+  /*
   printf("detected\n");
   printf("current_thread: %p\n", current_thread);
   printf("ancient_thread: %p\n", ancient_thread);
+  */
+
   int i;
-  struct listnode * thread=thread_list.headNode;
+  struct listnode * thread=thread_list.backNode;
+
+  //current_thread -> is_valid=0; TODO: a vérifier
+
+  thread_t ancient_thread = thread_list.backNode->data;
+  
+  while(ancient_thread != current_thread) {
+    thread = listnode__get_previous(thread);
+    ancient_thread = (thread_t) thread->data;
+  }
+
+  ancient_thread = (thread_t) listnode__get_next(thread)->data;
+
   for(i=0; i<thread_list.nbElementsInList; i++) {
     printf("%p \n", thread->data);
     thread = listnode__get_next(thread);
   }
-  _impl_thread_remove_from_list(ancient_thread);
-  swapcontext(&ancient_thread->context, &current_thread->context);
-  _impl_thread_delete(ancient_thread);
+
+  
+  _impl_thread_remove_from_list(current_thread);
+  printf("thread supprimé de la liste \n");
+
+  printf("changement de contexte \n");
+  swapcontext(&current_thread->context, &ancient_thread->context);
+
+
+  _impl_thread_delete(current_thread);
+  printf("thread supprimé \n");
+
+  current_thread = ancient_thread;
+
+  printf ("retour dans le main \n");
 
 }
