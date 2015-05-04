@@ -8,8 +8,10 @@
 #include <signal.h>
 #include "link.h"
 
-#define THREAD_PREEMPT
-#define THREAD_PREEMPT_INTERVAL 10000
+
+#ifndef STACK_SIZE
+   #define STACK_SIZE (5 * 1024)
+#endif
 
 void thread_stack_overflow();
 void thread_stack_overflow_detected();
@@ -169,7 +171,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
   getcontext(&(*new_thread)->context);
 
   // alloue la stack
-  const size_t stack_size = 1024;
+  const size_t stack_size = STACK_SIZE;
   (*new_thread)->context.uc_stack.ss_size = stack_size;
   (*new_thread)->context.uc_stack.ss_sp = malloc(stack_size);
   if ((*new_thread)->context.uc_stack.ss_sp == NULL){
