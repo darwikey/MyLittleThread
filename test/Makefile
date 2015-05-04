@@ -15,7 +15,9 @@ BIN=	01-main \
 	32-switch-many-join \
 	51-fibonacci \
 	61-stack-overflow \
-	62-stack-overflow
+	62-stack-overflow \
+	profiling
+
 
 all: $(BIN)
 	@echo "Binaries created !"
@@ -37,6 +39,7 @@ all: $(BIN)
 51-fibonacci: ../src/thread.o
 61-stack-overflow: ../src/thread.o
 62-stack-overflow: ../src/thread.o
+profiling: ../src/thread.o
 
 clean:
 	@rm -f $(BIN) *~ *.o
