@@ -8,7 +8,7 @@
 #include <signal.h>
 #include "link.h"
 
-//#define THREAD_PREEMPT
+#define THREAD_PREEMPT
 #define THREAD_PREEMPT_INTERVAL 10000
 
 void thread_stack_overflow();
@@ -344,20 +344,18 @@ void thread_stack_overflow_detected() {
     ancient_thread = (thread_t) thread->data;
   }
 
-  ancient_thread = (thread_t) listnode__get_next(thread)->data;
+  ancient_thread = (thread_t) listnode__get_previous(thread)->data;
 
   for(i=0; i<thread_list.nbElementsInList; i++) {
     printf("%p \n", thread->data);
-    thread = listnode__get_next(thread);
+    thread = listnode__get_previous(thread);
   }
-
-  
-  _impl_thread_remove_from_list(current_thread);
-  printf("thread supprimé de la liste \n");
 
   printf("changement de contexte \n");
   swapcontext(&current_thread->context, &ancient_thread->context);
 
+  linkedlist__pop_back(&thread_list);
+  printf("thread supprimé de la liste \n");
 
   _impl_thread_delete(current_thread);
   printf("thread supprimé \n");
@@ -367,3 +365,5 @@ void thread_stack_overflow_detected() {
   printf ("retour dans le main \n");
 
 }
+
+
