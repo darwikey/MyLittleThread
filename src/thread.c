@@ -347,7 +347,7 @@ void thread_stack_overflow_detected() {
   ancient_thread = (thread_t) listnode__get_previous(thread)->data;
 
   for(i=0; i<thread_list.nbElementsInList; i++) {
-    printf("%p \n", thread->data);
+    //printf("%p \n", thread->data);
     thread = listnode__get_previous(thread);
   }
 
@@ -365,5 +365,4 @@ void thread_stack_overflow_detected() {
   printf ("retour dans le main \n");
 
 }
-
 
