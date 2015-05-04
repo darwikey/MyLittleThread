@@ -302,13 +302,14 @@ void thread_exit(void *retval){
   assert(0);
 }
 
-stack_t ss;
+stack_t ss = {0};
 struct sigaction sa;
 
 void thread_stack_overflow() {
   
   // Pile pour gérér les signaux si la pile du thread est pleine
-  ss.ss_sp = malloc(SIGSTKSZ);
+  if(ss.ss_sp == NULL)
+    ss.ss_sp = malloc(SIGSTKSZ);
   ss.ss_size = SIGSTKSZ;
   ss.ss_flags = 0;
   //ss.ss_size=SIGSTKSZ;
