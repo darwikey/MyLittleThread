@@ -285,7 +285,7 @@ void thread_exit(void *retval){
   if (current_thread->father_thread != NULL){
     // si le pere attend, on doit le rajouter dans la liste de threads
     if (current_thread->father_thread->is_waiting){
-      assert(!listiterator__is_valide(listiterator__find_data(&thread_list, current_thread->father_thread)));
+      //assert(!listiterator__is_valide(listiterator__find_data(&thread_list, current_thread->father_thread)));
       linkedlist__push_back(&thread_list, current_thread->father_thread);
       //current_thread = current_thread->father_thread;
     }
