@@ -6,8 +6,8 @@ CC=gcc
 CFLAGS= -fPIC -Wall -Wextra -D STACK_SIZE=4096 -D THREAD_PREEMPT -D THREAD_PREEMPT_INTERVAL=10000
 LDFLAGS= -shared
 
-SOURCES=thread.c
-HEADERS=thread.h
+SOURCES=thread.c mutex.c
+HEADERS=thread.h mutex.h
 OBJECTS=$(SOURCES:.c=.o)
 
 LIBDIR=../lib

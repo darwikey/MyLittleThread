@@ -2,6 +2,7 @@
 #define __MUTEX_H__
 
 #ifndef USE_PTHREAD
+struct linkedlist;
 
 /* identifiant de mutex
  */
@@ -12,16 +13,16 @@ enum attr {MUTEX_NORMAL, MUTEX_RECURSIVE, MUTEX_ERRORCHECK};
 /* structure de mutex
  */
 struct mutex_t{
-  //mutex_t mutex;
   int state; // 0 = non initialisé, 1 = verrouillé, 2 = déverrouillé
-  enum attr attr;
+  enum attr attr; //attribut
+  struct linkedlist* waiting_thread;
 };
 
 
 /* Créer un nouveau mutex
    Renvoie 0 en cas de succès, -1 en cas d'erreur
 */
-int mutex_init(struct mutex_t * mutex, const enum attr * attr);
+int mutex_init(struct mutex_t * mutex, enum attr attr);
 
 
 /* Détruit le mutex référencé par mutex

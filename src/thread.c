@@ -7,7 +7,7 @@
 #include <time.h>
 #include <signal.h>
 #include "link.h"
-
+#include "link.inl"
 
 #ifndef STACK_SIZE
    #define STACK_SIZE (5 * 1024)
@@ -74,22 +74,24 @@ void _impl_thread_delete(thread_t thread){
 }
 
 
+// retire le thread courant de la liste de threads actifs  
+void _impl_thread_disable_current(void){
+  assert(linkedlist__back(&thread_list) == current_thread);
+  linkedlist__pop_back(&thread_list);
+}
+
+
+// ajoute un thread a la liste des threads
+void _impl_thread_add(thread_t thread){
+  linkedlist__push_front(&thread_list, thread);
+}
+
+
 // retourne si le thread est présent dans la liste de thread
 int _impl_thread_is_valid(thread_t thread){
   //struct listiterator it = listiterator__find_data(&thread_list, thread);
 
   return thread->is_valid;//listiterator__is_valide(it); // non valide
-}
-
-
-// supprime un thread de la liste de thread
-void _impl_thread_remove_from_list(thread_t thread){
-
-  struct listiterator it = listiterator__find_data(&thread_list, thread);
-
-  if (listiterator__is_valide(it)){
-    listiterator__remove_node(it);
-  }
 }
 
 
@@ -110,7 +112,7 @@ void _impl_thread_preempt_handler(int signal){
   }
 }
 
-
+//init le premier thread
 void _impl_thread_init_main(void){
   if (main_thread == NULL){
     main_thread = _impl_thread_create();
@@ -245,9 +247,7 @@ int thread_join(thread_t thread, void **retval){
     thread->father_thread = current_thread;
     current_thread->is_waiting = 1;
 
-    // on le retire de la liste de threads actifs  
-    assert(linkedlist__back(&thread_list) == current_thread);
-    linkedlist__pop_back(&thread_list);
+    _impl_thread_disable_current();
 
     thread_yield();
     _impl_thread_lock();

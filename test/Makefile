@@ -16,6 +16,7 @@ BIN=	01-main \
 	51-fibonacci \
 	61-stack-overflow \
 	62-stack-overflow \
+	71-mutex \
 	profiling
 
 
@@ -39,6 +40,7 @@ all: $(BIN)
 51-fibonacci: ../src/thread.o
 61-stack-overflow: ../src/thread.o
 62-stack-overflow: ../src/thread.o
+71-mutex: ../src/thread.o ../src/mutex.o
 profiling: ../src/thread.o
 
 clean:
