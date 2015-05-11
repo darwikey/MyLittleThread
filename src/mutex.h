@@ -4,10 +4,6 @@
 #ifndef USE_PTHREAD
 struct linkedlist;
 
-/* identifiant de mutex
- */
-//typedef void * mutex_t;
-
 enum attr {MUTEX_NORMAL, MUTEX_RECURSIVE, MUTEX_ERRORCHECK};
 
 /* structure de mutex
@@ -57,15 +53,14 @@ int mutex_unlock(struct mutex_t * mutex);
 /* Si on compile avec -DUSE_PTHREAD, ce sont les pthreads qui sont utilisés */
 #include <sched.h>
 #include <pthread.h>
-#define struct mutex_t pthread_struct mutex_t
-#define mutex_attr_t pthread_mutex_attr_t
+#define mutex_t pthread_mutex_t
 #define MUTEX_NORMAL PTHREAD_MUTEX_NORMAL
 #define MUTEX_RECURSIVE PTHREAD_MUTEX_RECURSIVE
 #define MUTEX_ERRORCHECK PTHREAD_MUTEX_ERRORCHECK
 #define mutex_init pthread_mutex_init
 #define mutex_destroy pthread_mutex_destroy
 #define mutex_lock pthread_mutex_lock
-#define struct mutex_trylock pthread_struct mutex_trylock
+#define mutex_trylock pthread_mutex_trylock
 #define mutex_unlock pthread_mutex_unlock
 #define thread_self pthread_self
 
