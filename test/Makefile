@@ -17,6 +17,7 @@ BIN=	01-main \
 	61-stack-overflow \
 	62-stack-overflow \
 	71-mutex \
+	72-many-mutex \
 	profiling
 
 
@@ -41,6 +42,7 @@ all: $(BIN)
 61-stack-overflow: ../src/thread.o
 62-stack-overflow: ../src/thread.o
 71-mutex: ../src/thread.o ../src/mutex.o
+72-many-mutex: ../src/thread.o ../src/mutex.o
 profiling: ../src/thread.o
 
 clean:

@@ -25,6 +25,7 @@ int mutex_init(struct mutex_t * mutex, enum attr attr){
   return 0;
 }
 
+
 int mutex_destroy(struct mutex_t * mutex){
   // && mutex_t.attr == MUTEX_ERRORCHECK à laisser ? ou tout le tps check ?
   if(mutex->state == 1 && mutex->attr == MUTEX_ERRORCHECK){ // essai de détruire un mutex verrouillé, comportement indéfini
