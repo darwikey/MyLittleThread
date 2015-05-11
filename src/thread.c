@@ -8,6 +8,8 @@
 #include <signal.h>
 #include "link.h"
 #include "link.inl"
+#include <sys/mman.h>
+#include <malloc.h>
 
 #ifndef STACK_SIZE
    #define STACK_SIZE (5 * 1024)
@@ -306,6 +308,7 @@ void thread_exit(void *retval){
 
 stack_t ss = {0};
 struct sigaction sa;
+static char * buffer;
 
 void thread_stack_overflow() {
   
@@ -317,6 +320,12 @@ void thread_stack_overflow() {
   //ss.ss_size=SIGSTKSZ;
   sigaltstack(&ss, NULL);
   
+  int pagesize = sysconf(_SC_PAGE_SIZE);
+  
+  buffer = memalign(pagesize, 4*pagesize);
+
+  mprotect(buffer + pagesize*2, pagesize, PROT_READ);
+
   // Déroutement
   sa.sa_handler = thread_stack_overflow_detected; // gestionnaire de signal 
   sa.sa_flags = SA_ONSTACK;
@@ -327,21 +336,17 @@ void thread_stack_overflow_detected() {
   printf("overflow  detected \n");
   //Note: l'attribut father_thread n'est pas initialisé
 
-  //int i;
+  int i;
+
   struct listnode * thread=thread_list.backNode;
 
-  current_thread -> is_valid=1; //TODO: a vérifier
+  current_thread -> is_valid=1;
 
   thread_t ancient_thread = thread_list.backNode->data;
-  
-  /*while(ancient_thread != current_thread) {
-    thread = listnode__get_previous(thread);
-    ancient_thread = (thread_t) thread->data;
-    }
-  */
-
   ancient_thread = (thread_t) listnode__get_previous(thread)->data;
-
+  
+  /* Debuggage */
+  
   /*
   printf("current thread: %p \n", current_thread);
   printf("ancient_thread: %p \n", ancient_thread);
@@ -350,27 +355,13 @@ void thread_stack_overflow_detected() {
 
   /*
   for(i=0; i<thread_list.nbElementsInList; i++) {
-    printf("%p \n", thread->data);
+    printf("thread: %p \n", thread->data);
     thread = listnode__get_previous(thread);
   }
   */
-
-  /*linkedlist__pop_back(&thread_list);
-  printf("thread supprimé de la liste \n");
-
-  _impl_thread_delete(current_thread);
-  printf("thread supprimé \n");*/
-
+  
   printf("changement de contexte \n");
   swapcontext(&current_thread->context, &ancient_thread->context);
-
-  linkedlist__pop_back(&thread_list);
-  printf("thread supprimé de la liste \n");
-
-  _impl_thread_delete(current_thread);
-  printf("thread supprimé \n");
-
-  current_thread = ancient_thread;
 
   printf ("retour dans le main \n");
 
