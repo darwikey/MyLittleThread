@@ -8,9 +8,23 @@
 // pour opérations atomiques (nécessaire si on gère plusieurs coeurs) -> C11 (prof) ou openPA (perso).
 
 void _impl_thread_disable_current(void);
+void _impl_thread_add(thread_t);
+
+
+int mutex_init(struct mutex_t * mutex, enum attr attr){
+  
+  if (attr !=  MUTEX_NORMAL && attr != MUTEX_RECURSIVE && attr != MUTEX_ERRORCHECK) // attr n'est pas l'une des 3 valeurs supportées
+    return -1;
+    
+  else // attr != NULL et est l'une des 3 valeurs supportées
+    mutex->attr = attr;  
+  
+  mutex->state = 2; // déverrouillé
+  mutex->waiting_thread = NULL;
 
   return 0;
 }
+
 
 int mutex_destroy(struct mutex_t * mutex){
   // && mutex_t.attr == MUTEX_ERRORCHECK à laisser ? ou tout le tps check ?
