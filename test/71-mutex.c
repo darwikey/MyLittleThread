@@ -9,7 +9,7 @@
 thread_t tid[2];
 int counter = 0;
 struct mutex_t lock;
-int choix;
+int choix = 0;
 
 void* doSomeThing(void *arg)
 {
@@ -23,6 +23,7 @@ void* doSomeThing(void *arg)
   printf("\n Job %d started\n", job);
 
   for(i = 0 ; i < 10000000 ; i++){}
+
 
   printf("\n Job %d finished\n", job);
 
