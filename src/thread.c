@@ -12,7 +12,7 @@
 #include <malloc.h>
 
 #ifndef STACK_SIZE
-   #define STACK_SIZE (5 * 1024)
+#define STACK_SIZE (5 * 1024)
 #endif
 
 void thread_stack_overflow();
@@ -182,7 +182,7 @@ int thread_create(thread_t* new_thread,  void *(*func)(void *), void *funcarg){
     perror("malloc");
   }
   (*new_thread)->valgrind_stackid = VALGRIND_STACK_REGISTER((*new_thread)->context.uc_stack.ss_sp,
-			  (*new_thread)->context.uc_stack.ss_sp + stack_size);
+							    (*new_thread)->context.uc_stack.ss_sp + stack_size);
  
   //Cas débordement de pile
   thread_stack_overflow();
@@ -302,67 +302,77 @@ void thread_exit(void *retval){
   // passe au thread du pere
   thread_yield();
 
- 
   assert(0);
 }
 
 stack_t ss = {0};
 struct sigaction sa;
 static char * buffer;
+int bool = 1;
 
 void thread_stack_overflow() {
-  
+
   // Pile pour gérér les signaux si la pile du thread est pleine
   if(ss.ss_sp == NULL)
-    ss.ss_sp = malloc(SIGSTKSZ);
-  ss.ss_size = SIGSTKSZ;
+    ss.ss_sp = malloc(8000);
+  ss.ss_size = 8000;
   ss.ss_flags = 0;
   //ss.ss_size=SIGSTKSZ;
   sigaltstack(&ss, NULL);
-  
-  int pagesize = sysconf(_SC_PAGE_SIZE);
-  
-  buffer = memalign(pagesize, 4*pagesize);
-
-  mprotect(buffer + pagesize*2, pagesize, PROT_READ);
 
   // Déroutement
   sa.sa_handler = thread_stack_overflow_detected; // gestionnaire de signal 
   sa.sa_flags = SA_ONSTACK;
   sigaction(SIGSEGV, &sa, NULL);
+
+  /* Protection mémoire thread */
+
+  int pagesize = sysconf(_SC_PAGE_SIZE);
+  buffer = memalign(pagesize, 4*pagesize);
+  mprotect(buffer + pagesize*2, pagesize, PROT_NONE);
+
+
 }
 
 void thread_stack_overflow_detected() {
-  printf("overflow  detected \n");
-  //Note: l'attribut father_thread n'est pas initialisé
+  if(bool) {
+    /* Appeler cette fonction une seule fois */
+    bool=0;
+    printf("overflow  detected \n");
+    //Note: l'attribut father_thread n'est pas initialisé
+    
+    //int i;
+    
+    struct listnode * thread=thread_list.backNode;
+    
+    current_thread -> is_valid=0;
 
-  int i;
-
-  struct listnode * thread=thread_list.backNode;
-
-  current_thread -> is_valid=1;
-
-  thread_t ancient_thread = thread_list.backNode->data;
-  ancient_thread = (thread_t) listnode__get_previous(thread)->data;
+    thread_t ancient_thread = thread_list.backNode->data;
+    ancient_thread = (thread_t) listnode__get_previous(thread)->data;
   
-  /* Debuggage */
+    /* Debuggage */
   
-  /*
-  printf("current thread: %p \n", current_thread);
-  printf("ancient_thread: %p \n", ancient_thread);
-  printf("main_thread: %p \n", main_thread);
-  */
+    /*
+      printf("current thread: %p \n", current_thread);
+      printf("ancient_thread: %p \n", ancient_thread);
+      printf("main_thread: %p \n", main_thread);
+    */
 
-  /*
-  for(i=0; i<thread_list.nbElementsInList; i++) {
-    printf("thread: %p \n", thread->data);
-    thread = listnode__get_previous(thread);
+    /*
+      for(i=0; i<thread_list.nbElementsInList; i++) {
+      printf("thread: %p \n", thread->data);
+      thread = listnode__get_previous(thread);
+      }
+    */
+
+
+    /* Quitte tout */
+      //exit(EXIT_FAILURE);
+
+    printf("changement de contexte \n");
+    swapcontext(&current_thread->context, &ancient_thread->context);
+
+    printf ("retour dans le main \n"); /* Ne sera jamais executé */
+
   }
-  */
-  
-  printf("changement de contexte \n");
-  swapcontext(&current_thread->context, &ancient_thread->context);
-
-  printf ("retour dans le main \n");
-
 }

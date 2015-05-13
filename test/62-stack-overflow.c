@@ -4,7 +4,8 @@
 #include "thread.h"
 
 static void* f(void* i) {
-  unsigned long c[1000];
+  printf("encore de la place \n");
+  unsigned long c[100];
   c[0]=1;
   f((void*) c[0]);
   return i;
@@ -21,10 +22,12 @@ int main() {
   err = thread_create(&thread, f, (void*)(value));
   assert(!err);
   
+  printf("retour main\n");
+ 
   err = thread_join(thread, &res);
   assert(!err);
 
-  printf("retour main \n");
+  printf("fin main \n");
 
   return 0;
 }
