@@ -1,0 +1,4 @@
+Trois répertoires sont présents dans ce projet: 
+- le répertoire "lib" contient la librairie de threads implémentée après compilation des fichiers C du répertoire source.
+- le répertoire "src" contient les sources necéssaires à la création de la bibliothèque. Pour compiler, un Makefile est a votre disposition. Il suffit de lancer la commande "make" dans ce répertoire.
+- le répertoire "test" contient les tests de base, mais aussi ceux que nous avons ajoutés, pour tester notre implémentation. Pour compiler l'ensemble des test, il suffit de lancer la commande "make" dans le terminal. Pour ne compiler qu'un test, vous pouvez lancer la commande "make" suivi du nom du binaire. Les binaires portent le même nom que les fichiers C associés l'extension ".c" en moins. 
